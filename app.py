@@ -1,62 +1,81 @@
+import streamlit as st
+import pandas as pd
 import requests
 from bs4 import BeautifulSoup
-import faiss
-import streamlit as st
+from urllib.parse import urljoin, urlparse
 
-# Function to crawl a website and extract its content
-def crawl_website(url):
+# Function to scrape website content
+def scrape_website(url):
     try:
         response = requests.get(url)
-        soup = BeautifulSoup(response.text, 'html.parser')
-        # Extract text content from the website
-        text_content = ' '.join([p.get_text() for p in soup.find_all('p')])
-        return text_content
+        if response.status_code == 200:
+            soup = BeautifulSoup(response.text, 'html.parser')
+            # Extract text content from HTML
+            text = " ".join([p.text for p in soup.find_all('p')])
+            return text
+        else:
+            st.error(f"Failed to fetch website content. Error code: {response.status_code}")
+            return None
     except Exception as e:
-        print("Error crawling website:", e)
+        st.error(f"An error occurred: {str(e)}")
         return None
 
-# Function to index content and save it in a Faiss database
-def index_content(url, text_content, index):
-    if text_content:
-        # Transform text content into vector representation
-        # (This is just a placeholder, you might need to use a proper vectorization method)
-        vector = text_content.encode('utf-8')
-        index.add(np.array([vector]))
+# Function to extract links from a page
+def extract_links(url):
+    try:
+        response = requests.get(url)
+        if response.status_code == 200:
+            soup = BeautifulSoup(response.text, 'html.parser')
+            links = []
+            for link in soup.find_all('a'):
+                href = link.get('href')
+                if href and not href.startswith('#'):  # Filter out anchor links
+                    absolute_url = urljoin(url, href)
+                    links.append(absolute_url)
+            return links
+        else:
+            st.error(f"Failed to fetch links from the page. Error code: {response.status_code}")
+            return []
+    except Exception as e:
+        st.error(f"An error occurred while extracting links: {str(e)}")
+        return []
 
-# Function to generate response for user query
-def generate_response(query, index, vectors):
-    # Transform query into vector representation
-    query_vector = query.encode('utf-8')
-    # Search for the most similar vector in the Faiss index
-    distances, indices = index.search(np.array([query_vector]), k=1)
-    # Get the most similar document's URL
-    most_similar_index = indices[0][0]
-    most_similar_url = vectors[most_similar_index]
-    return most_similar_url
+# Function to crawl and index website
+def crawl_and_index_website(url, max_depth=3):
+    indexed_data = {}
 
-# Streamlit app
+    def crawl(url, depth):
+        if depth > max_depth:
+            return
+        if url in indexed_data:
+            return
+        st.write(f"Crawling {url}...")
+        text = scrape_website(url)
+        if text:
+            indexed_data[url] = text
+            links = extract_links(url)
+            for link in links:
+                crawl(link, depth + 1)
+
+    crawl(url, depth=1)
+    return indexed_data
+
 def main():
-    st.title("Website Search Engine")
-    
-    # Input URL
-    website_url = st.text_input("Enter website URL:", "https://example.com")
-    
-    # Crawl website
-    website_content = crawl_website(website_url)
-    
-    # Index content
-    index = faiss.IndexFlatL2(100)  # You might need to adjust the dimensionality
-    vectors = []
-    index_content(website_url, website_content, index)
-    vectors.append(website_url)
-    
-    # Example query
-    query = st.text_input("Enter your query:")
-    
-    # Generate response
-    if st.button("Search"):
-        response_url = generate_response(query, index, vectors)
-        st.write("The website that best matches the query is:", response_url)
+    st.title("Website Content Crawler & Indexer")
+
+    # Input URL and max depth
+    url = st.text_input("Enter website URL:")
+    max_depth = st.slider("Maximum Depth (up to 5)", 1, 5, 3)
+
+    if st.button("Crawl and Index"):
+        if url:
+            indexed_data = crawl_and_index_website(url, max_depth)
+            if indexed_data:
+                df = pd.DataFrame(list(indexed_data.items()), columns=["URL", "Text"])
+                st.write("Indexed data:")
+                st.write(df)
+            else:
+                st.error("Failed to crawl and index the website.")
 
 if __name__ == "__main__":
     main()
