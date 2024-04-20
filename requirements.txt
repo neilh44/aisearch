@@ -1,5 +1,5 @@
 fastapi
-malvius
+milvus
 faiss-cpu
 streamlit
 beautifulsoup4
