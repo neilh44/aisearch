@@ -1,5 +1,5 @@
-faiss-cpu==1.7.1
-streamlit==1.16.0
-beautifulsoup4==4.10.0
-requests==2.26.0
-scikit-learn==0.24.2
+faiss-cpu
+streamlit
+beautifulsoup4
+requests
+scikit-learn
