@@ -69,6 +69,7 @@ def main():
 
     if st.button("Crawl and Index"):
         if url:
+            st.info("Crawling and indexing in progress...")
             indexed_data = crawl_and_index_website(url, max_depth)
             if indexed_data:
                 df = pd.DataFrame(list(indexed_data.items()), columns=["URL", "Text"])
@@ -79,3 +80,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+    
