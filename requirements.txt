@@ -1,4 +1,4 @@
-fast api
+fastapi
 malvius
 faiss-cpu
 streamlit
