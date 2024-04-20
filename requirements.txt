@@ -1,3 +1,5 @@
+fast api
+malvius
 faiss-cpu
 streamlit
 beautifulsoup4
