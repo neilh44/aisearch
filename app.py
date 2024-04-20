@@ -1,8 +1,7 @@
 import requests
 from bs4 import BeautifulSoup
-from collections import defaultdict
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
+import faiss
+import streamlit as st
 
 # Function to crawl a website and extract its content
 def crawl_website(url):
@@ -16,45 +15,48 @@ def crawl_website(url):
         print("Error crawling website:", e)
         return None
 
-# Function to index content and save it in a vector database
-def index_content(url, text_content, vector_db):
+# Function to index content and save it in a Faiss database
+def index_content(url, text_content, index):
     if text_content:
-        vector_db[url] = text_content
+        # Transform text content into vector representation
+        # (This is just a placeholder, you might need to use a proper vectorization method)
+        vector = text_content.encode('utf-8')
+        index.add(np.array([vector]))
 
 # Function to generate response for user query
-def generate_response(query, vector_db):
+def generate_response(query, index, vectors):
     # Transform query into vector representation
-    query_vector = vectorizer.transform([query])
-    # Calculate cosine similarity between query vector and document vectors
-    similarities = cosine_similarity(query_vector, vector_db.values())
+    query_vector = query.encode('utf-8')
+    # Search for the most similar vector in the Faiss index
+    distances, indices = index.search(np.array([query_vector]), k=1)
     # Get the most similar document's URL
-    most_similar_index = similarities.argmax()
-    most_similar_url = list(vector_db.keys())[most_similar_index]
+    most_similar_index = indices[0][0]
+    most_similar_url = vectors[most_similar_index]
     return most_similar_url
 
-# Main function
+# Streamlit app
 def main():
-    # Initialize vector database
-    vector_db = defaultdict(str)
+    st.title("Website Search Engine")
+    
+    # Input URL
+    website_url = st.text_input("Enter website URL:", "https://example.com")
     
     # Crawl website
-    website_url = 'https://example.com'  # Change this to the website you want to crawl
     website_content = crawl_website(website_url)
     
     # Index content
-    index_content(website_url, website_content, vector_db)
-    
-    # Vectorize content
-    global vectorizer
-    vectorizer = TfidfVectorizer()
-    vectors = vectorizer.fit_transform(vector_db.values())
+    index = faiss.IndexFlatL2(100)  # You might need to adjust the dimensionality
+    vectors = []
+    index_content(website_url, website_content, index)
+    vectors.append(website_url)
     
     # Example query
-    query = "What is the website about?"
+    query = st.text_input("Enter your query:")
     
     # Generate response
-    response_url = generate_response(query, vectors, vector_db)
-    print("The website that best matches the query is:", response_url)
+    if st.button("Search"):
+        response_url = generate_response(query, index, vectors)
+        st.write("The website that best matches the query is:", response_url)
 
 if __name__ == "__main__":
     main()
