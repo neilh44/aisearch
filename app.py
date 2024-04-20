@@ -1,43 +1,46 @@
 import streamlit as st
-import pandas as pd
 import requests
 from bs4 import BeautifulSoup
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
 
 # Function to scrape website content
 def scrape_website(url):
     try:
         response = requests.get(url)
-        response.raise_for_status()  # Raise an exception for HTTP errors
         if response.status_code == 200:
             soup = BeautifulSoup(response.text, 'html.parser')
             # Extract text content from HTML
             text = " ".join([p.text for p in soup.find_all('p')])
             return text
         else:
-            st.error(f"Failed to fetch website content. Error code: {response.status_code}")
             return None
-    except requests.exceptions.RequestException as e:
-        st.error(f"An error occurred while fetching website content: {str(e)}")
-        return None
     except Exception as e:
-        st.error(f"An unexpected error occurred: {str(e)}")
         return None
+
+# Function to perform semantic search
+def semantic_search(query, indexed_data):
+    vectorizer = TfidfVectorizer(stop_words='english')
+    tfidf_matrix = vectorizer.fit_transform(indexed_data.values())
+    query_vec = vectorizer.transform([query])
+    cosine_similarities = cosine_similarity(query_vec, tfidf_matrix).flatten()
+    document_scores = [(score, url) for url, score in zip(indexed_data.keys(), cosine_similarities)]
+    document_scores.sort(reverse=True)
+    return document_scores
 
 def main():
-    st.title("Website Content Crawler & Indexer")
+    st.title("Semantic Web Search")
 
-    # Input URL
-    url = st.text_input("Enter website URL:")
+    # Input query
+    query = st.text_input("Enter your query:")
 
-    if st.button("Crawl and Index"):
-        if url:
-            st.info("Crawling and indexing in progress...")
-            text = scrape_website(url)
-            if text:
-                st.subheader("Website Content:")
-                st.write(text)
-            else:
-                st.error("Failed to crawl and index the website.")
+    if st.button("Search"):
+        if query:
+            # Perform semantic search
+            search_results = semantic_search(query, indexed_data)
+            st.subheader("Search Results:")
+            for score, url in search_results:
+                st.write(f"- {url} (Score: {score:.2f})")
 
 if __name__ == "__main__":
     main()
