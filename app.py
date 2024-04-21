@@ -1,32 +1,30 @@
 import streamlit as st
 from transformers import pipeline
 
-# Load pre-trained language model
+# Load pre-trained language model for encoding
 model_name = "bert-base-uncased"
-search_pipeline = pipeline("search", model=model_name)
+encode_pipeline = pipeline("feature-extraction", model=model_name)
 
-# Sample documents
-documents = [
-    "The cat sat on the mat.",
-    "The dog jumped over the fence.",
-    "The quick brown fox.",
-    "The lazy dog slept on the couch."
-]
+# Load website content vectors from database
+website_content_vectors = load_website_content_vectors()
 
 # Streamlit app
-st.title("AI Search Engine")
+st.title("Semantic Search Engine")
 
 # Search query input
 query = st.text_input("Enter your search query:")
 
 if query:
-    # Perform search
-    results = search_pipeline(query, documents)
+    # Encode query into vector
+    query_vector = encode_pipeline(query)
+
+    # Perform semantic search
+    search_results = semantic_search(query_vector, website_content_vectors)
 
     # Display search results
     st.subheader("Search Results:")
-    if results:
-        for i, result in enumerate(results, start=1):
-            st.write(f"{i}. {result['text']}")
+    if search_results:
+        for result in search_results:
+            st.write(result)
     else:
         st.write("No results found.")
