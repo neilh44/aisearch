@@ -1,46 +1,32 @@
 import streamlit as st
-import requests
-from bs4 import BeautifulSoup
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
+from transformers import pipeline
 
-# Function to scrape website content
-def scrape_website(url):
-    try:
-        response = requests.get(url)
-        if response.status_code == 200:
-            soup = BeautifulSoup(response.text, 'html.parser')
-            # Extract text content from HTML
-            text = " ".join([p.text for p in soup.find_all('p')])
-            return text
-        else:
-            return None
-    except Exception as e:
-        return None
+# Load pre-trained language model
+model_name = "bert-base-uncased"
+search_pipeline = pipeline("search", model=model_name)
 
-# Function to perform semantic search
-def semantic_search(query, indexed_data):
-    vectorizer = TfidfVectorizer(stop_words='english')
-    tfidf_matrix = vectorizer.fit_transform(indexed_data.values())
-    query_vec = vectorizer.transform([query])
-    cosine_similarities = cosine_similarity(query_vec, tfidf_matrix).flatten()
-    document_scores = [(score, url) for url, score in zip(indexed_data.keys(), cosine_similarities)]
-    document_scores.sort(reverse=True)
-    return document_scores
+# Sample documents
+documents = [
+    "The cat sat on the mat.",
+    "The dog jumped over the fence.",
+    "The quick brown fox.",
+    "The lazy dog slept on the couch."
+]
 
-def main():
-    st.title("Semantic Web Search")
+# Streamlit app
+st.title("AI Search Engine")
 
-    # Input query
-    query = st.text_input("Enter your query:")
+# Search query input
+query = st.text_input("Enter your search query:")
 
-    if st.button("Search"):
-        if query:
-            # Perform semantic search
-            search_results = semantic_search(query, indexed_data)
-            st.subheader("Search Results:")
-            for score, url in search_results:
-                st.write(f"- {url} (Score: {score:.2f})")
+if query:
+    # Perform search
+    results = search_pipeline(query, documents)
 
-if __name__ == "__main__":
-    main()
+    # Display search results
+    st.subheader("Search Results:")
+    if results:
+        for i, result in enumerate(results, start=1):
+            st.write(f"{i}. {result['text']}")
+    else:
+        st.write("No results found.")
